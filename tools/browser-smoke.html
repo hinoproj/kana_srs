@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!-- [MODULE] browser-smoke | End-to-end UI check: drives a real run in an iframe and asserts the results
+     [IFACE] layer: tooling | in: nothing -> out: pass/fail lines in #out, ending SMOKE PASSED/FAILED | crosses: [browser DOM, localStorage]
+     [GRAPH] needs: [index] | feeds: [] | group: tooling
+     [STATE] stateful | persists: clears the app's localStorage key before running | raises: nothing
+
+     Must be served over http(s): it drives index.html through a same-origin
+     iframe, which file:// forbids. See README "Development". -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Kana SRS browser smoke test</title></head>
+<body>
+<pre id="out">running…</pre>
+<iframe id="frame" style="width:900px;height:1200px;border:0"></iframe>
+<script>
+var lines = [];
+function log(name, ok, detail) { lines.push((ok ? 'ok   ' : 'FAIL ') + name + (detail ? ' -- ' + detail : '')); render(); }
+function render() { document.getElementById('out').textContent = lines.join('\n'); }
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+var frame = document.getElementById('frame');
+var started = false;
+
+// Same origin as the app, so its saved progress can be cleared before the app boots.
+try { localStorage.removeItem('kana_srs_v1'); } catch (e) {}
+
+frame.addEventListener('load', function () {
+  if (started) return;          // one run only: the app never navigates, but be explicit
+  started = true;
+  run().catch(function (e) {
+    log('exception', false, e.message);
+    lines.push('SMOKE FAILED');
+    render();
+  });
+});
+frame.src = '../index.html';
+
+async function run() {
+  var w = frame.contentWindow, d = frame.contentDocument;
+
+  var cards = d.querySelectorAll('.deck-card');
+  log('six deck cards rendered', cards.length === 6, 'got ' + cards.length);
+
+  cards[0].click();
+  await wait(100);
+  log('deck screen shown', !d.getElementById('screen-deck').hidden);
+  log('hiragana deck offers 3 modes', d.querySelectorAll('.mode-row').length === 3,
+      'got ' + d.querySelectorAll('.mode-row').length);
+
+  // Run length 10 keeps the smoke run short. The row re-renders on click, so
+  // the buttons must be re-queried rather than reused.
+  d.querySelectorAll('#run-size button')[0].click();
+  await wait(60);
+  log('run size 10 selected',
+      d.querySelectorAll('#run-size button')[0].getAttribute('aria-pressed') === 'true');
+
+  // --- MCQ run, every answer correct and fast -------------------------
+  d.querySelectorAll('.mode-row')[0].querySelector('button.primary').click();
+  await wait(100);
+  log('run screen shown', !d.getElementById('screen-run').hidden);
+  log('timer visible for a timed mode', !d.getElementById('timer').hidden);
+  log('four options offered', d.querySelectorAll('#options button').length === 4,
+      'got ' + d.querySelectorAll('#options button').length);
+
+  var answered = 0, seen = {};
+  for (var i = 0; i < 10; i++) {
+    var prompt = d.getElementById('prompt').textContent;
+    seen[prompt] = true;
+    var right = null;
+    Array.prototype.forEach.call(d.querySelectorAll('#options button'), function (b) {
+      if (!right && w.KANA_DATA.byKey[prompt].r === b.textContent) right = b;
+    });
+    if (!right) { log('correct option present for ' + prompt, false); break; }
+    right.click();
+    answered++;
+    await wait(750);
+  }
+  log('answered all 10 questions', answered === 10, 'got ' + answered);
+  log('10 distinct kana in the run', Object.keys(seen).length === 10, 'got ' + Object.keys(seen).length);
+  log('summary screen shown', !d.getElementById('screen-summary').hidden);
+  log('summary says 10/10', d.getElementById('stat-correct').textContent === '10/10',
+      d.getElementById('stat-correct').textContent);
+  log('fast answers score +5 each (+50)', d.getElementById('stat-points').textContent === '+50',
+      d.getElementById('stat-points').textContent);
+  log('summary lists every answered kana', d.querySelectorAll('.review-row').length === 10,
+      'got ' + d.querySelectorAll('.review-row').length);
+
+  var saved = JSON.parse(w.localStorage.getItem('kana_srs_v1'));
+  var scores = saved && saved.progress.mcq_k2r;
+  log('progress persisted to localStorage', !!scores && Object.keys(scores).length === 10,
+      scores ? Object.keys(scores).length + ' entries' : 'nothing saved');
+  log('each answered kana scored 5',
+      !!scores && Object.keys(scores).every(function (k) { return scores[k].score === 5; }));
+
+  // --- a wrong answer subtracts, floored at 0 -------------------------
+  d.getElementById('btn-again').click();
+  await wait(120);
+  var kana = d.getElementById('prompt').textContent, wrong = null;
+  Array.prototype.forEach.call(d.querySelectorAll('#options button'), function (b) {
+    if (!wrong && w.KANA_DATA.byKey[kana].r !== b.textContent) wrong = b;
+  });
+  wrong.click();
+  await wait(120);
+  var after = JSON.parse(w.localStorage.getItem('kana_srs_v1')).progress.mcq_k2r[kana];
+  log('wrong answer never drives a score below 0', after.score >= 0, 'score ' + after.score);
+  log('verdict marks the answer wrong',
+      d.getElementById('verdict').getAttribute('data-mark') === 'wrong');
+  await wait(1900);
+
+  // --- type mode ------------------------------------------------------
+  d.getElementById('btn-quit').click();
+  await wait(120);
+  d.querySelectorAll('.mode-row')[2].querySelector('button.primary').click();
+  await wait(120);
+  log('type mode hides the options grid', d.getElementById('options').hidden);
+  log('type mode hides the timer', d.getElementById('timer').hidden);
+
+  var typed = d.getElementById('prompt').textContent;
+  d.getElementById('type-input').value = w.KANA_DATA.byKey[typed].r;
+  d.getElementById('type-form').dispatchEvent(new w.Event('submit', { cancelable: true, bubbles: true }));
+  await wait(120);
+  log('typed answer accepted', d.getElementById('verdict').getAttribute('data-mark') === 'correct');
+  var typeScores = JSON.parse(w.localStorage.getItem('kana_srs_v1')).progress.type_k2r;
+  log('typed answer scores +3', typeScores[typed].score === 3, 'score ' + typeScores[typed].score);
+  await wait(800);
+
+  // --- katakana has no type mode --------------------------------------
+  d.getElementById('btn-quit').click();
+  await wait(120);
+  d.querySelector('[data-nav="home"]').click();
+  await wait(120);
+  d.querySelectorAll('.deck-card')[3].click();
+  await wait(120);
+  log('katakana deck offers 2 modes', d.querySelectorAll('.mode-row').length === 2,
+      'got ' + d.querySelectorAll('.mode-row').length);
+
+  // --- export round-trip ----------------------------------------------
+  var exported = w.KanaStore.exportText();
+  w.KanaStore.reset();
+  log('reset clears every score', Object.keys(w.KanaStore.raw().progress.mcq_k2r || {}).length === 0);
+  log('import restores an export', w.KanaStore.importText(exported) &&
+      Object.keys(w.KanaStore.raw().progress.mcq_k2r).length === 10);
+
+  lines.push(lines.some(function (l) { return l.indexOf('FAIL') === 0; }) ? 'SMOKE FAILED' : 'SMOKE PASSED');
+  render();
+}
+</script>
+</body>
+</html>

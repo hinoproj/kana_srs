@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kana SRS">
+  <!-- Full-bleed background with the glyph inside the central 80%, so the same
+       file works as both a normal and a maskable icon. -->
+  <rect width="512" height="512" fill="#11131a"/>
+  <text x="256" y="256" fill="#7aa2ff" font-family="'Hiragino Sans','Yu Gothic','Noto Sans JP',sans-serif"
+        font-size="250" text-anchor="middle" dominant-baseline="central">あ</text>
+</svg>

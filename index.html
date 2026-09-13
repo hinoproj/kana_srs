@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!-- [MODULE] index | Page shell: screen containers, timer ring markup, script/style wiring, PWA hooks
+     [IFACE] layer: presentation | in: nothing -> out: DOM nodes consumed by app.js | crosses: [browser DOM]
+     [GRAPH] needs: [app-css, kana-data, srs, storage, app] | feeds: [browser-smoke] | group: presentation
+     [STATE] stateless | persists: nothing | raises: nothing -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11131a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Kana SRS</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- Home: deck picker -->
+  <section class="screen" id="screen-home">
+    <div class="topbar">
+      <h1>Kana SRS <span class="sub">hiragana &amp; katakana</span></h1>
+      <button class="icon-btn ghost" id="btn-settings" type="button">Settings</button>
+    </div>
+    <p class="notice" id="storage-notice" hidden>
+      This browser is not letting the page save progress (common when opening the file directly).
+      Progress will be kept for this session only — export it from Settings before closing.
+    </p>
+    <div class="deck-grid" id="deck-grid"></div>
+  </section>
+
+  <!-- Deck: run length + mode picker -->
+  <section class="screen" id="screen-deck" hidden>
+    <div class="topbar">
+      <button class="icon-btn ghost" data-nav="home" type="button">← Decks</button>
+      <h1 id="deck-title"></h1>
+    </div>
+    <div class="field-row">
+      <span>Cards per run</span>
+      <div class="segmented" id="run-size"></div>
+    </div>
+    <div id="mode-list"></div>
+  </section>
+
+  <!-- Run: one question at a time -->
+  <section class="screen" id="screen-run" hidden>
+    <div class="topbar">
+      <button class="icon-btn ghost" id="btn-quit" type="button">← Quit</button>
+      <h1 id="run-title"></h1>
+    </div>
+    <div class="run-head">
+      <div class="run-progress"><span id="run-bar"></span></div>
+      <div class="run-count" id="run-count"></div>
+    </div>
+
+    <div class="prompt-box">
+      <div class="timer" id="timer" data-tier="fast" hidden>
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="track" cx="60" cy="60" r="52" fill="none" stroke-width="10"></circle>
+          <circle class="bar" id="timer-bar" cx="60" cy="60" r="52" fill="none" stroke-width="10"
+                  stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"></circle>
+        </svg>
+        <div class="readout"><span id="timer-value">0.0</span><small id="timer-tier">+5</small></div>
+      </div>
+      <div class="prompt" id="prompt"></div>
+      <div class="prompt-hint" id="prompt-hint"></div>
+    </div>
+
+    <div class="options" id="options" hidden></div>
+
+    <form class="type-form" id="type-form" hidden autocomplete="off">
+      <input id="type-input" type="text" inputmode="latin" autocapitalize="off"
+             autocorrect="off" spellcheck="false" placeholder="rōmaji">
+      <button class="primary" type="submit" id="type-submit">Check</button>
+    </form>
+
+    <div class="verdict" id="verdict"></div>
+  </section>
+
+  <!-- Summary: what the run did to your scores -->
+  <section class="screen" id="screen-summary" hidden>
+    <div class="topbar">
+      <button class="icon-btn ghost" data-nav="home" type="button">← Decks</button>
+      <h1 id="summary-title">Run complete</h1>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="value" id="stat-correct"></div><div class="label">correct</div></div>
+      <div class="stat"><div class="value" id="stat-points"></div><div class="label">points</div></div>
+      <div class="stat"><div class="value" id="stat-fast"></div><div class="label">under 3s</div></div>
+    </div>
+    <div class="review-list" id="review-list"></div>
+    <div class="actions">
+      <button class="primary" id="btn-again" type="button">Run again</button>
+      <button class="ghost" id="btn-to-deck" type="button">Back to deck</button>
+    </div>
+  </section>
+
+  <!-- Settings: storage status, backup, reset -->
+  <section class="screen" id="screen-settings" hidden>
+    <div class="topbar">
+      <button class="icon-btn ghost" data-nav="home" type="button">← Decks</button>
+      <h1>Settings</h1>
+    </div>
+
+    <div class="panel">
+      <h2>Storage</h2>
+      <p id="storage-status"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Backup</h2>
+      <p>Progress lives in this browser only. Export a copy before clearing site data or moving devices.</p>
+      <div class="actions">
+        <button class="primary" id="btn-export" type="button">Export progress</button>
+        <button class="ghost" id="btn-import" type="button">Import progress</button>
+        <input id="import-file" type="file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Reset</h2>
+      <p>Erases every score in every mode. There is no undo — export first.</p>
+      <button class="danger" id="btn-reset" type="button">Reset all progress</button>
+    </div>
+
+    <div class="panel">
+      <h2>Scoring</h2>
+      <p>
+        Multiple choice: correct within 3s <strong>+5</strong>, within 5s <strong>+3</strong>,
+        slower <strong>+1</strong>, wrong <strong>−5</strong>.<br>
+        Typing: correct <strong>+3</strong>, wrong <strong>−5</strong>.<br>
+        Scores never drop below 0. Learned at <strong>10</strong>, confident at <strong>25</strong>,
+        counted separately for each mode.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/kana-data.js"></script>
+<script src="js/srs.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
