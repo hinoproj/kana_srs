@@ -1,5 +1,5 @@
 // [MODULE] storage | Progress persistence: best-effort localStorage plus explicit JSON export/import
-// [IFACE] layer: infrastructure | in: mode/kana score updates, settings, imported JSON -> out: stats reads, export text | crosses: [browser localStorage]
+// [IFACE] layer: infrastructure | in: mode/kana score updates, settings (run size, theme), imported JSON -> out: stats reads, export text | crosses: [browser localStorage]
 // [GRAPH] needs: [] | feeds: [app, index] | group: infrastructure
 // [STATE] stateful | persists: localStorage key kana_srs_v1 | raises: nothing (all storage access is try/guarded)
 
@@ -13,7 +13,7 @@
  * the JSON export/import is the guaranteed-durable path regardless.
  *
  * Shape:
- *   { version, settings: {runSize}, progress: { <mode>: { <kana>: entry } } }
+ *   { version, settings: {runSize, theme}, progress: { <mode>: { <kana>: entry } } }
  *   entry = { score, seen, right, lastSeen }  (lastSeen = epoch ms)
  */
 (function (global) {
@@ -23,13 +23,17 @@
   var VERSION = 1;
   var DEFAULT_RUN_SIZE = 15;
 
+  // Theme ids double as the data-theme value css/app.css keys its palettes on.
+  var THEMES = ['dark', 'light', 'kids'];
+  var DEFAULT_THEME = 'dark';
+
   var EMPTY_ENTRY = { score: 0, seen: 0, right: 0, lastSeen: 0 };
 
   var available = false;
   var state = blankState();
 
   function blankState() {
-    return { version: VERSION, settings: { runSize: DEFAULT_RUN_SIZE }, progress: {}, updatedAt: 0 };
+    return { version: VERSION, settings: { runSize: DEFAULT_RUN_SIZE, theme: DEFAULT_THEME }, progress: {}, updatedAt: 0 };
   }
 
   function backend() {
@@ -51,6 +55,9 @@
     if (!raw || typeof raw !== 'object') return next;
     if (raw.settings && typeof raw.settings.runSize === 'number') {
       next.settings.runSize = raw.settings.runSize;
+    }
+    if (raw.settings && THEMES.indexOf(raw.settings.theme) >= 0) {
+      next.settings.theme = raw.settings.theme;
     }
     if (raw.progress && typeof raw.progress === 'object') {
       Object.keys(raw.progress).forEach(function (mode) {
@@ -130,6 +137,15 @@
     save();
   }
 
+  function setTheme(theme) {
+    if (THEMES.indexOf(theme) < 0) {
+      console.warn('[storage.js][setTheme] unknown theme ignored: ' + theme);
+      return;
+    }
+    state.settings.theme = theme;
+    save();
+  }
+
   function exportText() {
     return JSON.stringify(state, null, 2);
   }
@@ -153,12 +169,14 @@
 
   global.KanaStore = {
     STORAGE_KEY: STORAGE_KEY,
+    THEMES: THEMES,
     load: load,
     save: save,
     stats: stats,
     record: record,
     getSettings: getSettings,
     setRunSize: setRunSize,
+    setTheme: setTheme,
     exportText: exportText,
     importText: importText,
     reset: reset,

@@ -84,8 +84,11 @@ The only module that touches `localStorage` (key `kana_srs_v1`). Every access is
 and everything runs in memory for the session. `importText` re-normalises any file it is given, so
 a hand-edited or truncated export cannot corrupt the in-memory shape.
 
-**Exposes**: `STORAGE_KEY`, `load`, `save`, `stats`, `record`, `getSettings`, `setRunSize`,
-`exportText`, `importText`, `reset`, `isAvailable`, `raw`
+Settings hold `runSize` and `theme`; `THEMES` (`dark`/`light`/`kids`) is the validated list, and an
+unknown theme in an import falls back to `dark`.
+
+**Exposes**: `STORAGE_KEY`, `THEMES`, `load`, `save`, `stats`, `record`, `getSettings`, `setRunSize`,
+`setTheme`, `exportText`, `importText`, `reset`, `isAvailable`, `raw`
 
 ## app
 
@@ -99,11 +102,17 @@ The verdict and the summary report the points the answer **earned** (the nominal
 the net change to the stored score — a miss against a kana already at 0 would otherwise read
 "Wrong +0".
 
+Theme: `applyTheme()` stamps `data-theme` on `<html>` and rewrites the `theme-color` meta so the
+Android status bar follows the palette. The kids theme also swaps verdict text for a random cheer
+and adds a summary line; those strings live here, the visuals in `app-css`.
+
 ## app-css
 
 **File**: `css/app.css` · **Layer**: presentation
 
-Tablet-first, dark by default with a light `prefers-color-scheme` palette. Contains a global
+Tablet-first. Three explicit palettes keyed on `:root[data-theme]` — `dark` (default, also the
+bare `:root`), `light`, and `kids` (warm cream, coral/teal accents, a pop/shake animation on the
+answered option). The OS colour scheme is deliberately ignored. Contains a global
 `[hidden] { display: none !important; }` because the hideable blocks set `display: flex/grid`,
 which would otherwise beat the browser's `[hidden]` rule.
 

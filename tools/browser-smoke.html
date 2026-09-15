@@ -133,12 +133,63 @@ async function run() {
   log('katakana deck offers 2 modes', d.querySelectorAll('.mode-row').length === 2,
       'got ' + d.querySelectorAll('.mode-row').length);
 
+  // --- themes ---------------------------------------------------------
+  log('dark is the default theme', d.documentElement.getAttribute('data-theme') === 'dark',
+      d.documentElement.getAttribute('data-theme'));
+  d.querySelector('[data-nav="home"]').click();
+  await wait(60);
+  d.getElementById('btn-settings').click();
+  await wait(120);
+  var themeButtons = d.querySelectorAll('#theme-picker button');
+  log('theme picker offers 3 themes', themeButtons.length === 3, 'got ' + themeButtons.length);
+  themeButtons[2].click();
+  await wait(60);
+  log('kids theme stamps <html data-theme>', d.documentElement.getAttribute('data-theme') === 'kids');
+  log('theme-color meta follows the theme',
+      d.getElementById('theme-color').getAttribute('content') === '#fff6e5');
+  log('theme persisted in settings',
+      JSON.parse(w.localStorage.getItem('kana_srs_v1')).settings.theme === 'kids');
+  log('picker marks the active theme',
+      d.querySelectorAll('#theme-picker button')[2].getAttribute('aria-pressed') === 'true');
+
+  // kids theme: a correct answer cheers, the summary cheers
+  d.querySelector('[data-nav="home"]').click();
+  await wait(60);
+  d.querySelectorAll('.deck-card')[0].click();
+  await wait(60);
+  d.querySelectorAll('.mode-row')[0].querySelector('button.primary').click();
+  await wait(120);
+  var kidsKana = d.getElementById('prompt').textContent, kidsRight = null;
+  Array.prototype.forEach.call(d.querySelectorAll('#options button'), function (b) {
+    if (!kidsRight && w.KANA_DATA.byKey[kidsKana].r === b.textContent) kidsRight = b;
+  });
+  kidsRight.click();
+  await wait(60);
+  log('kids verdict is a cheer, not "Correct"', /[✨🌟🎉🙌]/.test(d.getElementById('verdict').textContent),
+      d.getElementById('verdict').textContent);
+  await wait(800);
+  d.getElementById('btn-quit').click();
+  await wait(60);
+
+  // switch back so the remaining checks (and the next run) see the default
+  d.querySelector('[data-nav="home"]').click();
+  await wait(60);
+  d.getElementById('btn-settings').click();
+  await wait(60);
+  d.querySelectorAll('#theme-picker button')[0].click();
+  await wait(60);
+  log('switching back restores dark', d.documentElement.getAttribute('data-theme') === 'dark');
+
   // --- export round-trip ----------------------------------------------
   var exported = w.KanaStore.exportText();
   w.KanaStore.reset();
   log('reset clears every score', Object.keys(w.KanaStore.raw().progress.mcq_k2r || {}).length === 0);
   log('import restores an export', w.KanaStore.importText(exported) &&
       Object.keys(w.KanaStore.raw().progress.mcq_k2r).length === 10);
+  // Last, because it replaces the whole state with a near-empty one.
+  log('an unknown theme in an import falls back to the default',
+      w.KanaStore.importText(JSON.stringify({ settings: { theme: 'neon' } })) &&
+      w.KanaStore.getSettings().theme === 'dark');
 
   lines.push(lines.some(function (l) { return l.indexOf('FAIL') === 0; }) ? 'SMOKE FAILED' : 'SMOKE PASSED');
   render();

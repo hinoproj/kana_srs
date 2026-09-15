@@ -38,6 +38,10 @@ and the DOM layer holds no rules.
   time in a 46-kana deck; questions now draw 1–2 options from the answer's shape-confusion set.
 - **Homophone guard.** ぢ/じ and づ/ず share rōmaji, so options are deduplicated by `r`, and the
   rōmaji-prompt direction shows the wāpuro forms (`di`, `du`, `dya`…) to keep one right answer.
+- **Themes are an explicit setting, not OS-derived.** Dark / Light / Kids are chosen in Settings
+  and stored with progress; `prefers-color-scheme` is ignored so a tablet handed to a child does
+  not change look when the system theme flips. Kids is palette + playful feedback strings only —
+  same layout, same system font, no bundled assets.
 - **Storage is best-effort with a guaranteed manual path.** `localStorage` under `file://` is
   unreliable (opaque origin: refused in some browsers, throws in others), so every access is
   guarded, the UI states the situation, and JSON export/import is the durable backup.

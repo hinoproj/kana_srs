@@ -1,4 +1,4 @@
-// [MODULE] app | Controller: screen routing, run lifecycle, timer widget, answer handling, backup UI
+// [MODULE] app | Controller: screen routing, run lifecycle, timer widget, answer handling, theme, backup UI
 // [IFACE] layer: presentation | in: DOM events -> out: rendered screens, recorded answers, exported JSON | crosses: [browser DOM, service worker]
 // [GRAPH] needs: [kana-data, srs, storage, sw] | feeds: [index] | group: presentation
 // [STATE] stateful | persists: via storage module | raises: nothing
@@ -22,6 +22,14 @@
   var ADVANCE_OK_MS = 650;
   var ADVANCE_WRONG_MS = 1700;
 
+  // Android paints the status bar with this, so it has to follow the palette.
+  var THEME_BAR_COLOR = { dark: '#11131a', light: '#f5f6fa', kids: '#fff6e5' };
+
+  // Kids theme swaps the flat verdicts for something to grin at. Picked at
+  // random so the same word does not come back ten times in one run.
+  var KIDS_CHEERS = ['Yatta! ✨', 'Sugoi! 🌟', 'Nice one! 🎉', 'Yes! 🙌'];
+  var KIDS_MISS = 'Not quite 🙈';
+
   var el = {};
   var session = null;   // { deck, mode, queue, index, results }
   var question = null;
@@ -36,8 +44,37 @@
       'run-title', 'run-bar', 'run-count', 'timer', 'timer-bar', 'timer-value', 'timer-tier',
       'prompt', 'prompt-hint', 'options', 'type-form', 'type-input', 'verdict',
       'stat-correct', 'stat-points', 'stat-fast', 'review-list', 'summary-title',
-      'storage-status', 'import-file'].forEach(function (id) {
+      'storage-status', 'import-file', 'theme-picker', 'theme-color', 'summary-cheer'].forEach(function (id) {
       el[id] = $(id);
+    });
+  }
+
+  // --- Theme -----------------------------------------------------------
+
+  function isKids() {
+    return Store.getSettings().theme === 'kids';
+  }
+
+  function applyTheme() {
+    var theme = Store.getSettings().theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    el['theme-color'].setAttribute('content', THEME_BAR_COLOR[theme] || THEME_BAR_COLOR.dark);
+  }
+
+  function renderThemePicker() {
+    var current = Store.getSettings().theme;
+    el['theme-picker'].innerHTML = '';
+    Store.THEMES.forEach(function (theme) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
+      b.setAttribute('aria-pressed', String(theme === current));
+      b.addEventListener('click', function () {
+        Store.setTheme(theme);
+        applyTheme();
+        renderThemePicker();
+      });
+      el['theme-picker'].appendChild(b);
     });
   }
 
@@ -300,8 +337,11 @@
       after: change.after
     });
 
+    var headline = isKids()
+      ? (correct ? KIDS_CHEERS[Math.floor(Math.random() * KIDS_CHEERS.length)] : KIDS_MISS)
+      : (correct ? 'Correct' : 'Wrong');
     el.verdict.setAttribute('data-mark', correct ? 'correct' : 'wrong');
-    el.verdict.innerHTML = (correct ? 'Correct ' : 'Wrong ') +
+    el.verdict.innerHTML = headline + ' ' +
       (points >= 0 ? '+' : '') + points +
       '<span class="detail">' + question.item.k + ' = ' + question.item.r +
       ' · score ' + change.after + ' (' + SRS.stateOf(change.after) + ')</span>';
@@ -326,6 +366,10 @@
     el['stat-points'].textContent = (points >= 0 ? '+' : '') + points;
     el['stat-fast'].textContent = SRS.MODE_INFO[session.mode].timed ? String(fast) : '—';
 
+    var ratio = correct / session.results.length;
+    el['summary-cheer'].hidden = !isKids();
+    el['summary-cheer'].textContent = ratio >= 0.9 ? 'Amazing! 🏆' : (ratio >= 0.7 ? 'Great job! 🎉' : 'Keep going! 💪');
+
     el['review-list'].innerHTML = '';
     session.results.forEach(function (r) {
       var row = document.createElement('div');
@@ -344,6 +388,7 @@
   // --- Settings / backup ----------------------------------------------
 
   function renderSettings() {
+    renderThemePicker();
     el['storage-status'].textContent = Store.isAvailable()
       ? 'Progress is being saved in this browser (localStorage). Installing the page to the home screen keeps it safest.'
       : 'This browser is blocking storage for this page, so progress only lasts for the current session. Export before you close it, or serve the app over http(s) instead of opening the file directly.';
@@ -424,6 +469,7 @@
   function init() {
     cacheDom();
     Store.load();
+    applyTheme();
     bind();
     renderHome();
     registerServiceWorker();

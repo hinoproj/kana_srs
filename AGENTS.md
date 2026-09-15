@@ -43,6 +43,7 @@ add one and register it in the Child Index below.
 | Any file in `sw.js` `ASSETS` | `sw.js` (`CACHE_NAME`) | Installed copies otherwise keep serving the old bundle. |
 | New element ids in `index.html` | `js/app.js` `cacheDom()` | `app` looks up every node by id at boot. |
 | Scoring constants in `js/srs.js` | `index.html` Settings panel, `README.md` | The rules are printed to the user in two places; drift makes the app lie about its own scoring. |
+| `THEMES` in `js/storage.js` | `css/app.css` `:root[data-theme=…]` blocks, `js/app.js` `THEME_BAR_COLOR` | A theme id is the `data-theme` value the palette is keyed on and the key of its status-bar colour; adding one without all three gives an unstyled page. |
 
 ## Verification
 

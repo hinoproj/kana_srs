@@ -1,4 +1,4 @@
-/* [MODULE] app-css | Visual layer: tablet-first dark/light theme, screen layout, timer ring, option grid
+/* [MODULE] app-css | Visual layer: tablet-first dark/light/kids themes, screen layout, timer ring, option grid
    [IFACE] layer: presentation | in: class names and data-state attributes set by app.js -> out: rendered styling | crosses: []
    [GRAPH] needs: [] | feeds: [index] | group: presentation
    [STATE] stateless | persists: nothing | raises: nothing */
@@ -7,7 +7,8 @@
    never smaller than 64px tall, and kana are set large enough that the shape
    differences the SRS is testing are actually visible. */
 
-:root {
+:root,
+:root[data-theme="dark"] {
   --bg: #11131a;
   --surface: #1a1d27;
   --surface-2: #232734;
@@ -22,20 +23,35 @@
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f5f6fa;
-    --surface: #ffffff;
-    --surface-2: #eef0f6;
-    --line: #dcdfe9;
-    --text: #171a22;
-    --muted: #616a80;
-    --accent: #2f5fd8;
-    --good: #1f9e5f;
-    --warn: #b57a15;
-    --bad: #cf4239;
-    color-scheme: light;
-  }
+/* Themes are an explicit choice (Settings), never inferred from the OS: a
+   tablet handed to a child should not change its look because the system
+   theme flipped. app.js stamps data-theme on <html>. */
+:root[data-theme="light"] {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface-2: #eef0f6;
+  --line: #dcdfe9;
+  --text: #171a22;
+  --muted: #616a80;
+  --accent: #2f5fd8;
+  --good: #1f9e5f;
+  --warn: #b57a15;
+  --bad: #cf4239;
+  color-scheme: light;
+}
+
+:root[data-theme="kids"] {
+  --bg: #fff6e5;
+  --surface: #ffffff;
+  --surface-2: #ffe9c2;
+  --line: #ffd48a;
+  --text: #3b2a1a;
+  --muted: #8a6a4a;
+  --accent: #ff7a59;
+  --good: #22b7a0;
+  --warn: #ffb300;
+  --bad: #ff5c7a;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -420,4 +436,49 @@ button.danger { color: var(--bad); border-color: var(--bad); background: transpa
   .prompt { font-size: 76px; }
   .options button { min-height: 72px; font-size: 26px; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* --- Kids theme: playful feedback ------------------------------------ */
+
+:root[data-theme="kids"] body {
+  background: radial-gradient(circle at 10% 0%, #ffe3c2 0, var(--bg) 45%),
+              radial-gradient(circle at 100% 100%, #d9f5ef 0, var(--bg) 40%);
+  background-attachment: fixed;
+}
+
+:root[data-theme="kids"] .options button { font-weight: 600; }
+:root[data-theme="kids"] .deck-card .deck-sample { color: var(--accent); }
+:root[data-theme="kids"] .meter .seg-learning { background: var(--warn); }
+:root[data-theme="kids"] .timer .bar { stroke: var(--good); }
+:root[data-theme="kids"] .timer[data-tier="ok"] .bar { stroke: var(--warn); }
+:root[data-theme="kids"] .timer[data-tier="slow"] .bar { stroke: var(--accent); }
+:root[data-theme="kids"] .verdict { font-size: 22px; }
+
+:root[data-theme="kids"] .options button[data-mark="correct"] {
+  animation: kids-pop .4s cubic-bezier(.3, 1.6, .5, 1);
+}
+
+:root[data-theme="kids"] .options button[data-mark="wrong"] {
+  animation: kids-shake .35s ease;
+}
+
+:root[data-theme="kids"] .stat .value { color: var(--accent); }
+
+.summary-cheer {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 650;
+  margin: -6px 0 18px;
+}
+
+@keyframes kids-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes kids-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
 }

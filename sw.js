@@ -1,7 +1,7 @@
 // [MODULE] sw | Service worker: precache the whole app so the installed PWA runs with no network
 // [IFACE] layer: infrastructure | in: install/activate/fetch events -> out: cached responses | crosses: [Cache Storage API]
 // [GRAPH] needs: [] | feeds: [app] | group: infrastructure
-// [STATE] stateful | persists: Cache Storage bucket kana-srs-v1 | raises: nothing
+// [STATE] stateful | persists: Cache Storage bucket named by CACHE_NAME | raises: nothing
 
 /**
  * Cache-first for everything, because the app is a fixed set of static files
@@ -10,7 +10,7 @@
  * BUMP CACHE_NAME on every release, otherwise tablets keep serving the old
  * bundle forever: cache-first never revalidates.
  */
-var CACHE_NAME = 'kana-srs-v1';
+var CACHE_NAME = 'kana-srs-v2';
 
 var ASSETS = [
   './',

@@ -1,5 +1,20 @@
 # Progress Context — kana_srs
 
+## [2026-09-15] Themes: Dark / Light / Kids switcher in Settings
+
+- `css/app.css`: palettes moved from a `prefers-color-scheme` media query to explicit
+  `:root[data-theme="dark|light|kids"]` blocks; kids adds a warm gradient body, coral/teal accents,
+  bolder options, a pop animation on the correct option and a shake on a wrong one.
+- `js/storage.js`: `settings.theme` (validated against `THEMES`, default `dark`), `setTheme()`;
+  unknown values in an import fall back to the default.
+- `js/app.js`: `applyTheme()` stamps `<html data-theme>` and rewrites the `theme-color` meta;
+  theme picker (segmented control) in Settings; kids-only verdict cheers (Yatta!/Sugoi!/…) and a
+  summary line (Amazing!/Great job!/Keep going!).
+- `index.html`: Theme panel, `#summary-cheer`, id on the theme-color meta. `sw.js`: `CACHE_NAME`
+  bumped to v2.
+- Verified: selftest still 45/45; browser smoke extended with 9 theme assertions (33/33 pass);
+  screenshots of home/run/summary/settings reviewed in all three themes.
+
 ## [2026-09-13] Project created: full kana SRS app, first working version
 
 Built the whole app from an empty repository in one session.

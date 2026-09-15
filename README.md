@@ -33,6 +33,12 @@ is the whole introduction schedule — there are no tiers and no locked modes.
 Typed answers accept Nihon-shiki and wāpuro spellings as well as Hepburn (`si`/`shi`, `tu`/`tsu`,
 `sya`/`sha`, `zi`/`ji`, `nn`/`n`).
 
+## Themes
+
+Settings → Theme: **Dark** (default), **Light**, or **Kids** — a warmer palette that cheers on
+correct answers. The choice is saved with your progress and follows an export/import. The OS
+colour scheme is ignored on purpose.
+
 ## Running it on a tablet
 
 **Recommended — install it as an app.** Publish this repo with GitHub Pages
